@@ -35,6 +35,8 @@ The configured Sonarr/Radarr URLs are trusted server-side destinations. Only con
 
 Mediapp does not connect directly to a download client. Queue state is what Sonarr/Radarr report about their tracked downloads; client-specific details not exposed through those APIs (such as a complete client queue or client controls) are not shown.
 
+Service icons are the official Sonarr and Radarr brand marks from their respective repositories.
+
 The dashboard refreshes every 30 seconds and also has a manual refresh button. Mediapp makes read-only API requests.
 
 ## Development
