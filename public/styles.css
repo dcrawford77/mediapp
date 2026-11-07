@@ -49,8 +49,9 @@ h1 { margin-bottom: 7px; font-size: clamp(29px, 4vw, 38px); letter-spacing: -1.5
 .service-card { min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .card-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 16px; border-bottom: 1px solid var(--line); }
 .service-name { display: flex; align-items: center; gap: 11px; }
-.service-logo { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: #283a34; color: var(--green); font: 700 15px "Segoe UI", sans-serif; }
-.service-logo.radarr { background: #283243; color: var(--blue); }
+.service-logo { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 34px; border-radius: 9px; background: #f0f1f3; }
+.service-logo img { display: block; width: 28px; height: 28px; object-fit: contain; }
+.service-logo.radarr { background: #f0f1f3; }
 .service-name h2 { margin: 0; font-size: 17px; letter-spacing: -.3px; }
 .service-version { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
 .status-pill { display: inline-flex; gap: 6px; align-items: center; border-radius: 20px; padding: 5px 9px; background: rgba(103,223,168,.1); color: var(--green); font-size: 10px; font-weight: 600; }

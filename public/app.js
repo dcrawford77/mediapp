@@ -78,7 +78,13 @@ function createServiceCard(service) {
   const card = element("article", "service-card");
   const head = element("div", "card-head");
   const name = element("div", "service-name");
-  name.append(element("span", `service-logo ${key}`, key === "sonarr" ? "S" : "R"));
+  const logo = element("span", `service-logo ${key}`);
+  logo.setAttribute("aria-hidden", "true");
+  const image = element("img", "");
+  image.src = `/icons/${key}.svg`;
+  image.alt = "";
+  logo.append(image);
+  name.append(logo);
   const nameText = element("div");
   nameText.append(element("h2", "", service.name));
   const version = service.system?.version ? `v${service.system.version}` : service.configured ? "Series & movies" : "Connect your instance";
