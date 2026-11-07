@@ -1,0 +1,13 @@
+{
+  "name": "mediapp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A local dashboard for Sonarr and Radarr download activity",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
