@@ -29,7 +29,7 @@ button { font: inherit; }
 .shell { max-width: 1160px; margin: 0 auto; padding: 0 34px; }
 .topbar { height: 78px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,.07); }
 .brand { display: inline-flex; gap: 10px; align-items: center; color: var(--text); text-decoration: none; font: 600 18px "Segoe UI", sans-serif; letter-spacing: -.5px; }
-.brand-mark { width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; background: var(--green); color: #10251c; font: 700 20px "Segoe UI", sans-serif; }
+.brand-mark { display: block; width: 32px; height: 32px; border-radius: 9px; object-fit: cover; }
 .topbar-right { display: flex; align-items: center; gap: 22px; }
 .refresh-label, .updated, .source-note { color: var(--muted); font-size: 12px; }
 .live-dot, .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--green); margin-right: 7px; }
