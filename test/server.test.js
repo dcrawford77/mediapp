@@ -61,6 +61,22 @@ test("dashboard proxies service status, queue, health, and history without retur
   assert.ok(receivedKeys.every((key) => key === "test-sonarr-secret"));
 });
 
+test("the header uses the Mediapp logo image", async () => {
+  const pageResponse = await fetch(origin);
+  assert.equal(pageResponse.status, 200);
+  const page = await pageResponse.text();
+  assert.match(page, /class="brand-mark" src="\/mediapp-logo\.png"/);
+  assert.match(page, /rel="icon" type="image\/png" href="\/mediapp-logo\.png"/);
+
+  const logoResponse = await fetch(`${origin}/mediapp-logo.png`);
+  assert.equal(logoResponse.status, 200);
+  assert.equal(logoResponse.headers.get("content-type"), "image/png");
+  assert.deepEqual(
+    [...new Uint8Array(await logoResponse.arrayBuffer()).slice(0, 8)],
+    [137, 80, 78, 71, 13, 10, 26, 10],
+  );
+});
+
 test("service URL validation only permits HTTP(S) URLs without embedded credentials", () => {
   assert.equal(getServiceConfig({ SONARR_URL: "ftp://host", SONARR_API_KEY: "key" }, "sonarr").configured, false);
   assert.equal(getServiceConfig({ SONARR_URL: "http://user:pass@host", SONARR_API_KEY: "key" }, "sonarr").configured, false);
