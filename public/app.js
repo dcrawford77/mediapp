@@ -3,6 +3,7 @@ const activityList = document.querySelector("#activity-list");
 const updatedAt = document.querySelector("#updated-at");
 const refreshButton = document.querySelector("#refresh-button");
 const liveRegion = document.querySelector("#live-region");
+const APP_BASE_PATH = new URL(document.querySelector("base").href).pathname.replace(/\/$/, "");
 
 function element(tag, className, text) {
   const node = document.createElement(tag);
@@ -81,7 +82,7 @@ function createServiceCard(service) {
   const logo = element("span", `service-logo ${key}`);
   logo.setAttribute("aria-hidden", "true");
   const image = element("img", "");
-  image.src = `/icons/${key}.svg`;
+  image.src = `${APP_BASE_PATH}/icons/${key}.svg`;
   image.alt = "";
   logo.append(image);
   name.append(logo);
@@ -197,7 +198,7 @@ function renderDashboard(data) {
 async function refresh() {
   refreshButton.disabled = true;
   try {
-    const response = await fetch("/api/dashboard", { headers: { Accept: "application/json" } });
+    const response = await fetch(`${APP_BASE_PATH}/api/dashboard`, { headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error("Dashboard request failed.");
     renderDashboard(await response.json());
   } catch {
