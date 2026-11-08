@@ -1,7 +1,10 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const http = require("node:http");
+const os = require("node:os");
+const path = require("node:path");
 const { after, before, test } = require("node:test");
-const { createServer, getServiceConfig } = require("../server");
+const { createServer, getBasePath, getServiceConfig } = require("../server");
 
 let server;
 let origin;
@@ -65,8 +68,8 @@ test("the header uses the Mediapp logo image", async () => {
   const pageResponse = await fetch(origin);
   assert.equal(pageResponse.status, 200);
   const page = await pageResponse.text();
-  assert.match(page, /class="brand-mark" src="\/mediapp-logo\.png"/);
-  assert.match(page, /rel="icon" type="image\/png" href="\/mediapp-logo\.png"/);
+  assert.match(page, /class="brand-mark" src="mediapp-logo\.png"/);
+  assert.match(page, /rel="icon" type="image\/png" href="mediapp-logo\.png"/);
 
   const logoResponse = await fetch(`${origin}/mediapp-logo.png`);
   assert.equal(logoResponse.status, 200);
@@ -81,4 +84,55 @@ test("service URL validation only permits HTTP(S) URLs without embedded credenti
   assert.equal(getServiceConfig({ SONARR_URL: "ftp://host", SONARR_API_KEY: "key" }, "sonarr").configured, false);
   assert.equal(getServiceConfig({ SONARR_URL: "http://user:pass@host", SONARR_API_KEY: "key" }, "sonarr").configured, false);
   assert.equal(getServiceConfig({ SONARR_URL: "http://host:8989/api/v3", SONARR_API_KEY: "key" }, "sonarr").configured, true);
+});
+
+test("service API keys can be read from mounted secret files", () => {
+  const secretDir = fs.mkdtempSync(path.join(os.tmpdir(), "mediapp-test-"));
+  const secretPath = path.join(secretDir, "sonarr-api-key");
+  fs.writeFileSync(secretPath, "file-secret\n");
+  try {
+    const config = getServiceConfig({
+      SONARR_URL: "http://localhost:8989",
+      SONARR_API_KEY_FILE: secretPath,
+      SONARR_API_KEY: "environment-secret",
+    }, "sonarr");
+    assert.equal(config.apiKey, "file-secret");
+    assert.equal(config.configured, true);
+    assert.throws(() => getServiceConfig({
+      SONARR_URL: "http://localhost:8989",
+      SONARR_API_KEY_FILE: path.join(secretDir, "missing"),
+    }, "sonarr"), /Unable to read SONARR_API_KEY_FILE/);
+  } finally {
+    fs.rmSync(secretDir, { recursive: true, force: true });
+  }
+});
+
+test("BASE_PATH serves the app and API below a reverse-proxy prefix", async () => {
+  assert.equal(getBasePath(" /davelight/mediapp/ "), "/davelight/mediapp");
+  assert.equal(getBasePath("/"), "");
+  assert.throws(() => getBasePath("/mediapp/../admin"), /BASE_PATH/);
+
+  const prefixedServer = createServer({ env: { BASE_PATH: "/davelight/mediapp" } });
+  await new Promise((resolve) => prefixedServer.listen(0, "127.0.0.1", resolve));
+  const prefixedOrigin = `http://127.0.0.1:${prefixedServer.address().port}`;
+  try {
+    const redirect = await fetch(`${prefixedOrigin}/davelight/mediapp`, { redirect: "manual" });
+    assert.equal(redirect.status, 302);
+    assert.equal(redirect.headers.get("location"), "/davelight/mediapp/");
+
+    const pageResponse = await fetch(`${prefixedOrigin}/davelight/mediapp/`);
+    assert.equal(pageResponse.status, 200);
+    assert.match(await pageResponse.text(), /<base href="\/davelight\/mediapp\/">/);
+
+    const iconResponse = await fetch(`${prefixedOrigin}/davelight/mediapp/icons/sonarr.svg`);
+    assert.equal(iconResponse.status, 200);
+    assert.equal(iconResponse.headers.get("content-type"), "image/svg+xml");
+
+    const dashboardResponse = await fetch(`${prefixedOrigin}/davelight/mediapp/api/dashboard`);
+    assert.equal(dashboardResponse.status, 200);
+    assert.equal((await dashboardResponse.json()).services.sonarr.status, "not-configured");
+    assert.equal((await fetch(`${prefixedOrigin}/api/dashboard`)).status, 404);
+  } finally {
+    await new Promise((resolve, reject) => prefixedServer.close((error) => error ? reject(error) : resolve()));
+  }
 });

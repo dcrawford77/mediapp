@@ -7,6 +7,17 @@ const API_PREFIX = "/api/v3";
 const PAGE_SIZE = 15;
 const REQUEST_TIMEOUT_MS = 8000;
 
+function getBasePath(value = "") {
+  const pathValue = value.trim().replace(/^\/+|\/+$/g, "");
+  if (!pathValue) return "";
+  const segments = pathValue.split("/");
+  if (segments.some((segment) => segment === "." || segment === "..")
+    || !/^[A-Za-z0-9._~-]+(?:\/[A-Za-z0-9._~-]+)*$/.test(pathValue)) {
+    throw new Error("BASE_PATH must contain only URL path segments.");
+  }
+  return `/${pathValue}`;
+}
+
 function loadEnvFile(env = process.env, filePath = path.join(__dirname, ".env")) {
   let contents;
   try {
@@ -30,10 +41,20 @@ function loadEnvFile(env = process.env, filePath = path.join(__dirname, ".env"))
   return env;
 }
 
+function getEnvValue(env, name) {
+  const filePath = env[`${name}_FILE`];
+  if (!filePath) return env[name] || "";
+  try {
+    return fs.readFileSync(filePath, "utf8").trim();
+  } catch (error) {
+    throw new Error(`Unable to read ${name}_FILE. Check the configured secret file path and permissions.`, { cause: error });
+  }
+}
+
 function getServiceConfig(env, name) {
   const prefix = name.toUpperCase();
   const baseUrl = (env[`${prefix}_URL`] || "").trim();
-  const apiKey = (env[`${prefix}_API_KEY`] || "").trim();
+  const apiKey = getEnvValue(env, `${prefix}_API_KEY`).trim();
   let url;
 
   if (baseUrl && apiKey) {
@@ -180,7 +201,7 @@ function sendJson(response, statusCode, data) {
   response.end(JSON.stringify(data));
 }
 
-function serveStatic(response, pathname) {
+function serveStatic(response, pathname, basePath) {
   const requestedPath = pathname === "/" ? "/index.html" : pathname;
   const filePath = path.resolve(PUBLIC_DIR, `.${requestedPath}`);
   if (!filePath.startsWith(`${PUBLIC_DIR}${path.sep}`)) {
@@ -194,6 +215,9 @@ function serveStatic(response, pathname) {
       response.writeHead(404);
       response.end("Not found");
       return;
+    }
+    if (path.basename(filePath) === "index.html") {
+      content = Buffer.from(content.toString("utf8").replaceAll("__APP_BASE_PATH__", basePath));
     }
     const contentTypes = {
       ".css": "text/css; charset=utf-8",
@@ -211,13 +235,26 @@ function serveStatic(response, pathname) {
 }
 
 function createServer({ env = process.env, fetchImpl = globalThis.fetch } = {}) {
+  const basePath = getBasePath(env.BASE_PATH || "");
   const services = [
     getServiceConfig(env, "sonarr"),
     getServiceConfig(env, "radarr"),
   ];
 
   return http.createServer(async (request, response) => {
-    const pathname = new URL(request.url, "http://localhost").pathname;
+    let pathname = new URL(request.url, "http://localhost").pathname;
+    if (basePath) {
+      if (pathname === basePath) {
+        response.writeHead(302, { Location: `${basePath}/` });
+        response.end();
+        return;
+      }
+      if (!pathname.startsWith(`${basePath}/`)) {
+        sendJson(response, 404, { error: "Not found" });
+        return;
+      }
+      pathname = pathname.slice(basePath.length);
+    }
     if (request.method === "GET" && pathname === "/api/dashboard") {
       const results = await Promise.all(services.map((service) => getServiceDashboard(service, fetchImpl)));
       sendJson(response, 200, {
@@ -227,7 +264,7 @@ function createServer({ env = process.env, fetchImpl = globalThis.fetch } = {}) 
       return;
     }
     if (request.method === "GET" && !pathname.startsWith("/api/")) {
-      serveStatic(response, pathname);
+      serveStatic(response, pathname, basePath);
       return;
     }
     sendJson(response, 404, { error: "Not found" });
@@ -238,9 +275,9 @@ if (require.main === module) {
   loadEnvFile();
   const server = createServer();
   const port = Number.parseInt(process.env.PORT || "3000", 10);
-  server.listen(port, "127.0.0.1", () => {
+  server.listen(port, process.env.HOST || "127.0.0.1", () => {
     console.log(`Mediapp is running at http://localhost:${port}`);
   });
 }
 
-module.exports = { createServer, getServiceConfig, getServiceDashboard, loadEnvFile };
+module.exports = { createServer, getBasePath, getServiceConfig, getServiceDashboard, loadEnvFile };
